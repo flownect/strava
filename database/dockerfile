@@ -1,0 +1,13 @@
+FROM postgres:15
+
+# Installation d'extensions utiles
+RUN apt-get update && apt-get install -y \
+    postgresql-contrib \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copie du script d'initialisation
+COPY init.sql /docker-entrypoint-initdb.d/
+
+# Configuration PostgreSQL pour de meilleures performances
+RUN echo "shared_preload_libraries = 'pg_stat_statements'" >> /usr/share/postgresql/postgresql.conf.sample
+RUN echo "pg_stat_statements.track = all" >> /usr/share/postgresql/postgresql.conf.sample
