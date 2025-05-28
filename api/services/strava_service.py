@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import time
 from flask import current_app
 from models.database import db, Athlete, ActivitySummary
+from models.strava_metrics import ActivityStravaMetrics
 
 class StravaService:
     def __init__(self):
@@ -77,8 +78,29 @@ class StravaService:
                               headers=headers, params=params)
         return response.json()
     
+    def get_detailed_activity(self, activity_id, access_token):
+        """Récupérer une activité avec tous les détails pour les métriques avancées"""
+        self.rate_limit_wait()
+        headers = {'Authorization': f'Bearer {access_token}'}
+        
+        try:
+            response = requests.get(
+                f'{self.base_url}/activities/{activity_id}',
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Erreur récupération activité détaillée {activity_id}: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            print(f"Erreur récupération activité détaillée {activity_id}: {str(e)}")
+            return None
+    
     def sync_athlete_activities(self, athlete_id):
-        """Synchroniser toutes les activités d'un athlète"""
+        """Synchroniser toutes les activités d'un athlète avec métriques enrichies"""
         athlete = Athlete.query.get(athlete_id)
         if not athlete:
             return {'error': 'Athlete not found'}
@@ -105,6 +127,7 @@ class StravaService:
         # Récupérer les nouvelles activités
         page = 1
         total_new_activities = 0
+        total_enriched_activities = 0
         
         while True:
             try:
@@ -118,8 +141,13 @@ class StravaService:
                     break
                 
                 for activity_data in activities:
+                    # Traitement de base
                     if self.process_activity(activity_data, athlete_id):
                         total_new_activities += 1
+                        
+                        # Enrichissement avec métriques Strava avancées
+                        if self.enrich_activity_with_strava_metrics(activity_data, athlete.access_token):
+                            total_enriched_activities += 1
                 
                 if len(activities) < 200:
                     break
@@ -130,10 +158,13 @@ class StravaService:
                 print(f"Erreur lors de la synchronisation: {str(e)}")
                 break
         
-        return {'synchronized_activities': total_new_activities}
+        return {
+            'synchronized_activities': total_new_activities,
+            'enriched_activities': total_enriched_activities
+        }
     
     def process_activity(self, strava_activity, athlete_id):
-        """Traiter et enregistrer une activité"""
+        """Traiter et enregistrer une activité (code existant)"""
         try:
             # Vérifier si l'activité existe déjà
             existing = ActivitySummary.query.filter_by(strava_id=strava_activity['id']).first()
@@ -187,3 +218,189 @@ class StravaService:
             print(f"Erreur lors du traitement de l'activité {strava_activity.get('id', 'N/A')}: {str(e)}")
             db.session.rollback()
             return False
+    
+    def enrich_activity_with_strava_metrics(self, strava_activity, access_token):
+        """Enrichir une activité avec les métriques Strava avancées"""
+        try:
+            # Récupérer l'activité de la base
+            activity_db = ActivitySummary.query.filter_by(
+                strava_id=strava_activity['id']
+            ).first()
+            
+            if not activity_db:
+                print(f"Activité {strava_activity['id']} non trouvée en base")
+                return False
+            
+            # Vérifier si les métriques existent déjà
+            existing_metrics = ActivityStravaMetrics.query.filter_by(
+                activity_id=activity_db.id
+            ).first()
+            
+            if existing_metrics:
+                print(f"Métriques déjà existantes pour activité {activity_db.id}")
+                return False
+            
+            # Récupérer les détails complets si nécessaire
+            detailed_activity = strava_activity
+            
+            # Si l'activité summary ne contient pas assez de détails, récupérer la version complète
+            if not strava_activity.get('device_watts') and not strava_activity.get('suffer_score'):
+                detailed_activity = self.get_detailed_activity(strava_activity['id'], access_token)
+                if not detailed_activity:
+                    detailed_activity = strava_activity
+            
+            # Créer les métriques Strava
+            strava_metrics = ActivityStravaMetrics(
+                activity_id=activity_db.id,
+                
+                # 💪 Données de puissance natives Strava
+                average_watts=detailed_activity.get('average_watts'),
+                weighted_average_watts=detailed_activity.get('weighted_average_watts'),
+                max_watts=detailed_activity.get('max_watts'),
+                device_watts=detailed_activity.get('device_watts', False),
+                
+                # ❤️ Données FC natives Strava
+                average_heartrate=detailed_activity.get('average_heartrate'),
+                max_heartrate=detailed_activity.get('max_heartrate'),
+                has_heartrate=detailed_activity.get('has_heartrate', False),
+                
+                # 🎯 Métriques d'effort Strava
+                suffer_score=detailed_activity.get('suffer_score'),
+                perceived_exertion=detailed_activity.get('perceived_exertion'),
+                
+                # 🚴‍♂️ Données vélo spécifiques
+                average_cadence=detailed_activity.get('average_cadence'),
+                average_temp=detailed_activity.get('average_temp'),
+                trainer=detailed_activity.get('trainer', False),
+                commute=detailed_activity.get('commute', False),
+                
+                # 🏃‍♂️ Données course/vitesse
+                average_speed_ms=detailed_activity.get('average_speed'),
+                max_speed_ms=detailed_activity.get('max_speed'),
+                
+                # 📍 Métadonnées
+                gear_id=detailed_activity.get('gear_id'),
+                external_id=detailed_activity.get('external_id'),
+                upload_id=detailed_activity.get('upload_id')
+            )
+            
+            db.session.add(strava_metrics)
+            db.session.commit()
+            
+            print(f"Métriques Strava ajoutées pour activité {activity_db.id} - "
+                  f"Power: {strava_metrics.weighted_average_watts}W, "
+                  f"Suffer: {strava_metrics.suffer_score}")
+            
+            return True
+            
+        except Exception as e:
+            print(f"Erreur enrichissement métriques Strava pour activité {strava_activity.get('id', 'N/A')}: {str(e)}")
+            db.session.rollback()
+            return False
+    
+    def sync_single_activity_enhanced(self, activity_id, athlete_id):
+        """Synchroniser une activité spécifique avec enrichissement complet"""
+        athlete = Athlete.query.get(athlete_id)
+        if not athlete:
+            return {'error': 'Athlete not found'}
+        
+        try:
+            # Récupérer l'activité détaillée depuis Strava
+            detailed_activity = self.get_detailed_activity(activity_id, athlete.access_token)
+            if not detailed_activity:
+                return {'error': 'Activity not found on Strava'}
+            
+            # Traitement de base
+            base_success = self.process_activity(detailed_activity, athlete_id)
+            
+            # Enrichissement avec métriques
+            metrics_success = False
+            if base_success:
+                metrics_success = self.enrich_activity_with_strava_metrics(detailed_activity, athlete.access_token)
+            
+            return {
+                'activity_id': activity_id,
+                'base_sync': base_success,
+                'metrics_sync': metrics_success,
+                'status': 'success' if (base_success and metrics_success) else 'partial'
+            }
+            
+        except Exception as e:
+            return {'error': f'Failed to sync activity {activity_id}: {str(e)}'}
+    
+    def update_existing_activities_with_metrics(self, athlete_id, limit=50):
+        """Mettre à jour les activités existantes sans métriques Strava"""
+        athlete = Athlete.query.get(athlete_id)
+        if not athlete:
+            return {'error': 'Athlete not found'}
+        
+        # Récupérer les activités sans métriques Strava
+        activities_without_metrics = db.session.query(ActivitySummary)\
+            .outerjoin(ActivityStravaMetrics, ActivitySummary.id == ActivityStravaMetrics.activity_id)\
+            .filter(ActivitySummary.athlete_id == athlete_id)\
+            .filter(ActivityStravaMetrics.id.is_(None))\
+            .order_by(ActivitySummary.start_date.desc())\
+            .limit(limit).all()
+        
+        updated_count = 0
+        
+        for activity in activities_without_metrics:
+            try:
+                # Récupérer les détails depuis Strava
+                detailed_activity = self.get_detailed_activity(activity.strava_id, athlete.access_token)
+                if detailed_activity:
+                    if self.enrich_activity_with_strava_metrics(detailed_activity, athlete.access_token):
+                        updated_count += 1
+                        
+                # Respecter le rate limiting
+                time.sleep(0.2)  # 200ms entre les requêtes
+                
+            except Exception as e:
+                print(f"Erreur mise à jour activité {activity.id}: {str(e)}")
+                continue
+        
+        return {
+            'activities_updated': updated_count,
+            'activities_processed': len(activities_without_metrics)
+        }
+    
+    def get_athlete_training_summary(self, athlete_id, days=30):
+        """Résumé d'entraînement enrichi pour un athlète"""
+        try:
+            from datetime import timedelta
+            cutoff_date = datetime.utcnow() - timedelta(days=days)
+            
+            # Statistiques de base
+            base_stats = db.session.query(ActivitySummary)\
+                .filter(ActivitySummary.athlete_id == athlete_id)\
+                .filter(ActivitySummary.start_date_local >= cutoff_date).all()
+            
+            # Statistiques avec métriques Strava
+            metrics_stats = ActivityStravaMetrics.get_athlete_power_summary(athlete_id, days)
+            
+            # Activités récentes avec métriques
+            recent_activities = db.session.query(ActivitySummary, ActivityStravaMetrics)\
+                .outerjoin(ActivityStravaMetrics, ActivitySummary.id == ActivityStravaMetrics.activity_id)\
+                .filter(ActivitySummary.athlete_id == athlete_id)\
+                .filter(ActivitySummary.start_date_local >= cutoff_date)\
+                .order_by(ActivitySummary.start_date_local.desc())\
+                .limit(10).all()
+            
+            return {
+                'period_days': days,
+                'total_activities': len(base_stats),
+                'total_distance_km': sum(float(a.distance_km) for a in base_stats),
+                'total_time_hours': sum(float(a.moving_time_hours) for a in base_stats),
+                'power_metrics': metrics_stats,
+                'recent_activities': [
+                    {
+                        'activity': activity.to_dict(),
+                        'strava_metrics': metrics.to_dict() if metrics else None
+                    }
+                    for activity, metrics in recent_activities
+                ]
+            }
+            
+        except Exception as e:
+            print(f"Erreur résumé d'entraînement: {str(e)}")
+            return {'error': str(e)}

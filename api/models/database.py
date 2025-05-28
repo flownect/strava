@@ -69,6 +69,9 @@ class ActivitySummary(db.Model):
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
+    # Relation avec les métriques Strava (sera disponible après import)
+    # strava_metrics sera ajouté automatiquement par la relation dans ActivityStravaMetrics
+    
     def to_dict(self):
         return {
             'id': self.id,
