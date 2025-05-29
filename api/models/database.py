@@ -29,6 +29,7 @@ class Athlete(db.Model):
     
     # Relations
     activities = db.relationship('ActivitySummary', backref='athlete', lazy=True)
+    # settings relation will be added automatically by backref in AthleteSettings
 
 class ActivitySummary(db.Model):
     __tablename__ = 'activity_summary'
@@ -69,8 +70,8 @@ class ActivitySummary(db.Model):
     
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relation avec les métriques Strava (sera disponible après import)
-    # strava_metrics sera ajouté automatiquement par la relation dans ActivityStravaMetrics
+    # Relations avec métriques (seront disponibles après imports)
+    # strava_metrics et custom_metrics sont ajoutés automatiquement par les relations
     
     def to_dict(self):
         return {
@@ -82,13 +83,84 @@ class ActivitySummary(db.Model):
             'start_date': self.start_date_local.isoformat() if self.start_date_local else None,
             'distance_km': float(self.distance_km) if self.distance_km else 0,
             'moving_time_hours': float(self.moving_time_hours) if self.moving_time_hours else 0,
+            'moving_time_seconds': self.moving_time_seconds,
             'year': self.year,
             'month': self.month,
             'day': self.day,
+            'week': self.week,
             'day_name': self.day_name,
             'month_name': self.month_name,
             'average_speed': float(self.average_speed) if self.average_speed else None,
+            'max_speed': float(self.max_speed) if self.max_speed else None,
             'total_elevation_gain': float(self.total_elevation_gain) if self.total_elevation_gain else None,
             'average_heartrate': float(self.average_heartrate) if self.average_heartrate else None,
-            'calories': float(self.calories) if self.calories else None
+            'max_heartrate': self.max_heartrate,
+            'calories': float(self.calories) if self.calories else None,
+            'created_at': self.created_at.isoformat() if self.created_at else None
         }
+    
+    def get_duration_formatted(self):
+        """Retourner la durée formatée en heures:minutes"""
+        if not self.moving_time_seconds:
+            return "0:00"
+        
+        hours = self.moving_time_seconds // 3600
+        minutes = (self.moving_time_seconds % 3600) // 60
+        
+        if hours > 0:
+            return f"{hours}:{minutes:02d}"
+        else:
+            return f"0:{minutes:02d}"
+    
+    def get_pace_per_km(self):
+        """Calculer l'allure en min/km pour la course"""
+        if not self.distance_km or not self.moving_time_seconds or self.distance_km <= 0:
+            return None
+        
+        if self.type not in ['Run', 'Walk']:
+            return None
+        
+        seconds_per_km = self.moving_time_seconds / float(self.distance_km)
+        minutes = int(seconds_per_km // 60)
+        seconds = int(seconds_per_km % 60)
+        
+        return f"{minutes}:{seconds:02d}/km"
+    
+    def get_speed_kmh(self):
+        """Calculer la vitesse en km/h"""
+        if not self.average_speed:
+            return None
+        
+        # average_speed est en m/s, convertir en km/h
+        return round(float(self.average_speed) * 3.6, 1)
+    
+    def is_recent(self, days=7):
+        """Vérifier si l'activité est récente"""
+        if not self.start_date_local:
+            return False
+        
+        from datetime import timedelta
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        return self.start_date_local >= cutoff
+    
+    def get_activity_summary(self):
+        """Résumé rapide de l'activité"""
+        summary = {
+            'name': self.name,
+            'type': self.type,
+            'date': self.start_date_local.strftime('%Y-%m-%d') if self.start_date_local else None,
+            'distance_km': float(self.distance_km) if self.distance_km else 0,
+            'duration': self.get_duration_formatted(),
+            'day_name': self.day_name
+        }
+        
+        # Ajouter la vitesse selon le type
+        if self.type in ['Run', 'Walk']:
+            summary['pace'] = self.get_pace_per_km()
+        else:
+            summary['speed_kmh'] = self.get_speed_kmh()
+        
+        return summary
+    
+    def __repr__(self):
+        return f'<ActivitySummary {self.id}: {self.name} ({self.type}) - {self.distance_km}km>'

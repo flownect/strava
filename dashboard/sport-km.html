@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 Kilomètres par Sport - Strava Analytics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/date-fns/2.30.0/index.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 20px;
+            align-items: end;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-group select,
+        .control-group input {
+            padding: 12px 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .control-group select:focus,
+        .control-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .update-btn {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .update-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+
+        .config-btn {
+            background: linear-gradient(135deg, #ff9a56 0%, #ffad56 100%);
+            padding: 12px 25px;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .config-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 154, 86, 0.3);
+        }
+
+        .dashboard-grid {
+            display: grid; 
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        .chart-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .sport-legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+        }
+
+        .sport-filter-info {
+            background: #e8f4f8;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Kilomètres par Sport</h1>
+            <p>Analyse comparative de vos distances par activité sportive</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="sport-filter">🏃 Sport</label>
+                <select id="sport-filter">
+                    <option value="">Tous les sports</option>
+                    <!-- Options will be populated dynamically -->
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label for="period">📅 Période</label>
+                <select id="period">
+                    <option value="30">30 derniers jours</option>
+                    <option value="90">3 derniers mois</option>
+                    <option value="180">6 derniers mois</option>
+                    <option value="365">Dernière année</option>
+                    <option value="custom">Période personnalisée</option>
+                </select>
+            </div>
+
+            <div class="control-group" id="custom-dates" style="display: none;">
+                <label for="start-date">📅 Date début</label>
+                <input type="date" id="start-date">
+            </div>
+
+            <div class="control-group" id="custom-dates-end" style="display: none;">
+                <label for="end-date">📅 Date fin</label>
+                <input type="date" id="end-date">
+            </div>
+
+            <div class="control-group">
+                <label for="grouping">📊 Groupement Temps</label>
+                <select id="grouping">
+                    <option value="day">Par jour</option>
+                    <option value="week">Par semaine</option>
+                    <option value="month">Par mois</option>
+                </select>
+            </div>
+
+
+
+            <button class="update-btn" onclick="updateDashboard()">
+                🔄 Mettre à jour
+            </button>
+        </div>
+
+        <div id="sport-filter-info" class="sport-filter-info" style="display: none;">
+            <!-- Info about current filter will be shown here -->
+        </div>
+
+        <div class="stats-grid" id="stats-container">
+            <!-- Stats will be populated here -->
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="chart-container">
+                <h3 class="chart-title" id="chart-title">📈 Évolution par Sport</h3>
+                <canvas id="timeChart"></canvas>
+                <div class="sport-legend" id="legend-container">
+                    <!-- Legend will be populated here -->
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3 class="chart-title" id="pie-title">🥧 Répartition Totale</h3>
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            ⏳ Chargement des données...
+        </div>
+
+        <div id="error" class="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        let timeChart = null;
+        let pieChart = null;
+        let allActivities = []; // Store all activities for filtering
+        
+        // Configuration par défaut des noms de sports personnalisés
+        let sportCustomNames = {
+            'Run': 'Course à pied',
+            'Ride': 'Vélo',
+            'VirtualRide': 'Home trainer',
+            'Swim': 'Natation',
+            'Walk': 'Marche',
+            'Hike': 'Randonnée',
+            'Workout': 'Musculation',
+            'WeightTraining': 'Musculation',
+            'Yoga': 'Yoga',
+            'IceSkate': 'Patin à glace',
+            'CrossTraining': 'Cross training'
+        };
+        
+        // Configuration des couleurs par sport (utilise les noms personnalisés)
+        const sportColors = {
+            'Course à pied': '#FF6B6B',
+            'Vélo': '#4ECDC4', 
+            'Home trainer': '#45B7D1',
+            'Vélo (Tous)': '#4ECDC4',
+            'Natation': '#96CEB4',
+            'Marche': '#FECA57',
+            'Randonnée': '#FF9FF3',
+            'Musculation': '#54A0FF',
+            'Yoga': '#A78BFA',
+            'Cross training': '#F59E0B',
+            'Other': '#95A5A6'
+        };
+
+        // Fonction pour normaliser les types de sport avec noms personnalisés
+        function normalizeSportType(sportType) {
+            return sportCustomNames[sportType] || sportType;
+        }
+
+        // Supprimer tout le code du modal et des fonctions de configuration
+        // Charger la configuration depuis le localStorage
+        function loadSportConfiguration() {
+            const savedConfig = localStorage.getItem('sportCustomNames');
+            if (savedConfig) {
+                try {
+                    sportCustomNames = JSON.parse(savedConfig);
+                } catch (e) {
+                    console.error('Erreur lors du chargement de la configuration:', e);
+                }
+            }
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Charger la configuration des sports
+            loadSportConfiguration();
+            
+            // Initialiser les dates par défaut
+            const today = new Date();
+            const thirtyDaysAgo = new Date(today.getTime() - (30 * 24 * 60 * 60 * 1000));
+            
+            document.getElementById('end-date').value = today.toISOString().split('T')[0];
+            document.getElementById('start-date').value = thirtyDaysAgo.toISOString().split('T')[0];
+            
+            // Gérer l'affichage des dates personnalisées
+            document.getElementById('period').addEventListener('change', function() {
+                const customDates = document.getElementById('custom-dates');
+                const customDatesEnd = document.getElementById('custom-dates-end');
+                if (this.value === 'custom') {
+                    customDates.style.display = 'block';
+                    customDatesEnd.style.display = 'block';
+                } else {
+                    customDates.style.display = 'none';
+                    customDatesEnd.style.display = 'none';
+                }
+            });
+
+            // Gérer le changement de filtre sport
+            document.getElementById('sport-filter').addEventListener('change', function() {
+                updateDashboard();
+            });
+
+            // Charger les données initiales
+            updateDashboard();
+        });
+
+        async function fetchActivities(startDate, endDate) {
+            try {
+                let allActivities = [];
+                let page = 1;
+                const perPage = 200; // Maximum autorisé par l'API
+                let hasMore = true;
+                
+                while (hasMore) {
+                    console.log(`Récupération page ${page}...`);
+                    document.getElementById('loading').innerHTML = `⏳ Récupération des activités... Page ${page}`;
+                    
+                    const response = await fetch(`http://localhost:58001/api/activities/athlete/1?page=${page}&per_page=${perPage}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`Erreur API: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Ajouter les activités de cette page
+                    allActivities = allActivities.concat(data.activities);
+                    
+                    // Vérifier s'il y a d'autres pages
+                    hasMore = data.pagination.page < data.pagination.pages;
+                    page++;
+                    
+                    // Petite pause pour ne pas surcharger l'API
+                    if (hasMore) {
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                }
+                
+                console.log(`Total récupéré: ${allActivities.length} activités`);
+                
+                // Filtrer par dates
+                const filteredActivities = allActivities.filter(activity => {
+                    const activityDate = new Date(activity.start_date);
+                    return activityDate >= startDate && activityDate <= endDate;
+                });
+                
+                console.log(`Après filtre par date: ${filteredActivities.length} activités`);
+                return filteredActivities;
+                
+            } catch (error) {
+                console.error('Erreur lors de la récupération des données:', error);
+                throw error;
+            }
+        }
+
+        function populateSportFilter(activities) {
+            const sportFilter = document.getElementById('sport-filter');
+            const currentValue = sportFilter.value;
+            
+            // Obtenir tous les sports normalisés
+            const normalizedSports = [...new Set(activities.map(activity => {
+                const originalSport = activity.sport_type || 'Other';
+                return normalizeSportType(originalSport);
+            }))];
+            
+            // Créer la liste finale avec les options spéciales vélo
+            const finalSports = new Set();
+            let hasVelo = false;
+            let hasHomeTrainer = false;
+            
+            normalizedSports.forEach(sport => {
+                if (sport === 'Vélo') {
+                    hasVelo = true;
+                    finalSports.add('Vélo');
+                } else if (sport === 'Home trainer') {
+                    hasHomeTrainer = true;
+                    finalSports.add('Home trainer');
+                } else {
+                    finalSports.add(sport);
+                }
+            });
+            
+            // Ajouter "Vélo (Tous)" si on a au moins l'un des deux types de vélo
+            if (hasVelo || hasHomeTrainer) {
+                finalSports.add('Vélo (Tous)');
+            }
+            
+            const sportsArray = Array.from(finalSports).sort();
+            
+            // Vider et repeupler les options (sauf "Tous les sports")
+            const options = sportFilter.querySelectorAll('option');
+            for (let i = 1; i < options.length; i++) {
+                options[i].remove();
+            }
+            
+            // Ajouter les sports disponibles
+            sportsArray.forEach(sport => {
+                const option = document.createElement('option');
+                option.value = sport;
+                option.textContent = `${getEmoji(sport)} ${sport}`;
+                sportFilter.appendChild(option);
+            });
+            
+            // Restaurer la sélection si elle existe encore
+            if (currentValue && sportsArray.includes(currentValue)) {
+                sportFilter.value = currentValue;
+            }
+        }
+
+        function getEmoji(sport) {
+            const emojiMap = {
+                'Course à pied': '🏃',
+                'Vélo': '🚴',
+                'Home trainer': '🚴💻',
+                'Vélo (Tous)': '🚴',
+                'Natation': '🏊',
+                'Marche': '🚶',
+                'Randonnée': '🥾',
+                'Musculation': '💪',
+                'Yoga': '🧘',
+                'Cross training': '🏋️'
+            };
+            return emojiMap[sport] || '🏃';
+        }
+
+        function filterActivitiesBySport(activities, selectedSport) {
+            if (!selectedSport || selectedSport === '') {
+                return activities;
+            }
+            
+            // Cas spécial : "Vélo (Tous)" inclut Ride et VirtualRide
+            if (selectedSport === 'Vélo (Tous)') {
+                return activities.filter(activity => {
+                    const originalSport = activity.sport_type || 'Other';
+                    return originalSport === 'Ride' || originalSport === 'VirtualRide';
+                });
+            }
+            
+            return activities.filter(activity => {
+                const originalSport = activity.sport_type || 'Other';
+                const normalizedSport = normalizeSportType(originalSport);
+                return normalizedSport === selectedSport;
+            });
+        }
+
+        function updateSportFilterInfo(selectedSport, filteredCount, totalCount) {
+            const infoDiv = document.getElementById('sport-filter-info');
+            
+            if (selectedSport && selectedSport !== '') {
+                infoDiv.style.display = 'block';
+                infoDiv.innerHTML = `
+                    <strong>Filtre actif :</strong> ${getEmoji(selectedSport)} ${selectedSport} 
+                    (${filteredCount} activités sur ${totalCount} au total)
+                `;
+            } else {
+                infoDiv.style.display = 'none';
+            }
+        }
+
+        function updateChartTitles(selectedSport) {
+            const chartTitle = document.getElementById('chart-title');
+            const pieTitle = document.getElementById('pie-title');
+            
+            if (selectedSport && selectedSport !== '') {
+                chartTitle.textContent = `📈 Évolution - ${selectedSport}`;
+                pieTitle.textContent = `📊 Détails - ${selectedSport}`;
+            } else {
+                chartTitle.textContent = '📈 Évolution par Sport';
+                pieTitle.textContent = '🥧 Répartition Totale';
+            }
+        }
+
+        function processData(activities, grouping) {
+            const sportData = {};
+            const timeData = {};
+
+            activities.forEach(activity => {
+                const originalSport = activity.sport_type || 'Other';
+                const sport = normalizeSportType(originalSport);
+                const distance = activity.distance_km || 0;
+                const date = new Date(activity.start_date);
+                
+                let timeKey;
+                switch(grouping) {
+                    case 'day':
+                        timeKey = date.toISOString().split('T')[0];
+                        break;
+                    case 'week':
+                        const weekStart = new Date(date);
+                        weekStart.setDate(date.getDate() - date.getDay());
+                        timeKey = weekStart.toISOString().split('T')[0];
+                        break;
+                    case 'month':
+                        timeKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        break;
+                }
+
+                // Agrégation par sport
+                if (!sportData[sport]) {
+                    sportData[sport] = 0;
+                }
+                sportData[sport] += distance;
+
+                // Agrégation temporelle
+                if (!timeData[timeKey]) {
+                    timeData[timeKey] = {};
+                }
+                if (!timeData[timeKey][sport]) {
+                    timeData[timeKey][sport] = 0;
+                }
+                timeData[timeKey][sport] += distance;
+            });
+
+            return { sportData, timeData };
+        }
+
+        // Fonction spéciale pour traiter les données quand "Vélo (Tous)" est sélectionné
+        function processDataForCombinedCycling(activities, grouping) {
+            const sportData = { 'Vélo (Tous)': 0 };
+            const timeData = {};
+
+            activities.forEach(activity => {
+                const distance = activity.distance_km || 0;
+                const date = new Date(activity.start_date);
+                
+                let timeKey;
+                switch(grouping) {
+                    case 'day':
+                        timeKey = date.toISOString().split('T')[0];
+                        break;
+                    case 'week':
+                        const weekStart = new Date(date);
+                        weekStart.setDate(date.getDate() - date.getDay());
+                        timeKey = weekStart.toISOString().split('T')[0];
+                        break;
+                    case 'month':
+                        timeKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                        break;
+                }
+
+                // Tout additionner sous "Vélo (Tous)"
+                sportData['Vélo (Tous)'] += distance;
+
+                // Agrégation temporelle - tout sous "Vélo (Tous)"
+                if (!timeData[timeKey]) {
+                    timeData[timeKey] = {};
+                }
+                if (!timeData[timeKey]['Vélo (Tous)']) {
+                    timeData[timeKey]['Vélo (Tous)'] = 0;
+                }
+                timeData[timeKey]['Vélo (Tous)'] += distance;
+            });
+
+            return { sportData, timeData };
+        }
+
+        function updateStats(sportData, selectedSport) {
+            const container = document.getElementById('stats-container');
+            const totalKm = Object.values(sportData).reduce((sum, km) => sum + km, 0);
+            const sportCount = Object.keys(sportData).length;
+            const topSport = Object.entries(sportData).sort((a, b) => b[1] - a[1])[0];
+
+            let statsHtml = `
+                <div class="stat-card">
+                    <div class="stat-value">${totalKm.toFixed(1)}</div>
+                    <div class="stat-label">${selectedSport ? selectedSport + ' - Total KM' : 'Total KM'}</div>
+                </div>
+            `;
+
+            if (!selectedSport || selectedSport === '') {
+                // Affichage pour tous les sports
+                statsHtml += `
+                    <div class="stat-card">
+                        <div class="stat-value">${sportCount}</div>
+                        <div class="stat-label">Sports pratiqués</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${topSport ? topSport[0] : 'N/A'}</div>
+                        <div class="stat-label">Sport principal</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${topSport ? topSport[1].toFixed(1) : '0'}</div>
+                        <div class="stat-label">KM sport principal</div>
+                    </div>
+                `;
+            } else {
+                // Affichage pour un sport spécifique
+                const filteredActivities = filterActivitiesBySport(allActivities, selectedSport);
+                const avgDistance = filteredActivities.length > 0 ? totalKm / filteredActivities.length : 0;
+                const maxDistance = Math.max(...filteredActivities.map(a => a.distance_km || 0));
+                
+                statsHtml += `
+                    <div class="stat-card">
+                        <div class="stat-value">${filteredActivities.length}</div>
+                        <div class="stat-label">Activités ${selectedSport}</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${avgDistance.toFixed(1)}</div>
+                        <div class="stat-label">Distance moyenne</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${maxDistance.toFixed(1)}</div>
+                        <div class="stat-label">Distance maximale</div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = statsHtml;
+        }
+
+        function updateCharts(sportData, timeData, grouping) {
+            // Graphique temporel
+            const ctx1 = document.getElementById('timeChart').getContext('2d');
+            const dates = Object.keys(timeData).sort();
+            const sports = Object.keys(sportData);
+
+            const datasets = sports.map(sport => ({
+                label: sport,
+                data: dates.map(date => timeData[date][sport] || 0),
+                borderColor: sportColors[sport] || sportColors.Other,
+                backgroundColor: (sportColors[sport] || sportColors.Other) + '20',
+                tension: 0.4,
+                fill: false
+            }));
+
+            if (timeChart) {
+                timeChart.destroy();
+            }
+
+            timeChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: dates.map(date => {
+                        const d = new Date(date);
+                        switch(grouping) {
+                            case 'day':
+                                return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+                            case 'week':
+                                return `S${Math.ceil(d.getDate()/7)} ${d.toLocaleDateString('fr-FR', { month: 'short' })}`;
+                            case 'month':
+                                return d.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' });
+                        }
+                    }),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Distance (km)'
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+
+            // Graphique en secteurs
+            const ctx2 = document.getElementById('pieChart').getContext('2d');
+            
+            if (pieChart) {
+                pieChart.destroy();
+            }
+
+            pieChart = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(sportData),
+                    datasets: [{
+                        data: Object.values(sportData),
+                        backgroundColor: Object.keys(sportData).map(sport => 
+                            sportColors[sport] || sportColors.Other
+                        ),
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+
+            // Mise à jour de la légende
+            updateLegend(sportData);
+        }
+
+        function updateLegend(sportData) {
+            const container = document.getElementById('legend-container');
+            const total = Object.values(sportData).reduce((sum, km) => sum + km, 0);
+            
+            container.innerHTML = Object.entries(sportData)
+                .sort((a, b) => b[1] - a[1])
+                .map(([sport, km]) => `
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: ${sportColors[sport] || sportColors.Other}"></div>
+                        <span>${sport}: ${km.toFixed(1)}km (${((km/total)*100).toFixed(1)}%)</span>
+                    </div>
+                `).join('');
+        }
+
+        async function updateDashboard() {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            
+            loading.style.display = 'block';
+            loading.innerHTML = '⏳ Chargement des données...';
+            error.style.display = 'none';
+
+            try {
+                // Calculer les dates
+                const period = document.getElementById('period').value;
+                let startDate, endDate;
+
+                if (period === 'custom') {
+                    startDate = new Date(document.getElementById('start-date').value);
+                    endDate = new Date(document.getElementById('end-date').value);
+                } else {
+                    endDate = new Date();
+                    startDate = new Date(endDate.getTime() - (parseInt(period) * 24 * 60 * 60 * 1000));
+                }
+
+                const grouping = document.getElementById('grouping').value;
+                const selectedSport = document.getElementById('sport-filter').value;
+
+                // Récupérer les données
+                allActivities = await fetchActivities(startDate, endDate);
+                
+                // Peupler le filtre de sports
+                populateSportFilter(allActivities);
+                
+                // Filtrer par sport si nécessaire
+                const filteredActivities = filterActivitiesBySport(allActivities, selectedSport);
+                
+                // Traiter les données avec logique spéciale pour "Vélo (Tous)"
+                let sportData, timeData;
+                if (selectedSport === 'Vélo (Tous)') {
+                    const result = processDataForCombinedCycling(filteredActivities, grouping);
+                    sportData = result.sportData;
+                    timeData = result.timeData;
+                } else {
+                    const result = processData(filteredActivities, grouping);
+                    sportData = result.sportData;
+                    timeData = result.timeData;
+                }
+
+                // Mettre à jour l'interface
+                updateSportFilterInfo(selectedSport, filteredActivities.length, allActivities.length);
+                updateChartTitles(selectedSport);
+                updateStats(sportData, selectedSport);
+                updateCharts(sportData, timeData, grouping);
+
+            } catch (err) {
+                error.textContent = `Erreur: ${err.message}`;
+                error.style.display = 'block';
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
