@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Groupe Strava</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">📊 Dashboard Groupe</h1>
+        
+        <div class="info-section">
+            <h2 class="info-title">🚧 En construction</h2>
+            <div class="feature-list">
+                <div class="feature">
+                    <span class="feature-icon">⏳</span>
+                    <span>Dashboard en cours de développement</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">📊</span>
+                    <span>Stats de groupe bientôt disponibles</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🔄</span>
+                    <span>Synchronisation avec votre API locale</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="nav-buttons">
+            <a href="index.html" class="nav-btn btn-secondary">
+                🏠 Retour à l'accueil
+            </a>
+            <a href="invite.html" class="nav-btn btn-primary">
+                👥 Inviter des amis
+            </a>
+        </div>
+        
+        <div class="footer">
+            <p>🔧 Ce dashboard se connectera à votre API Flask locale une fois configurée</p>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+        console.log('Dashboard loaded');
+        console.log('API URL configurée:', CONFIG.API_BASE_URL);
+    </script>
+</body>
+</html>

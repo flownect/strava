@@ -1,41 +1,88 @@
-# Environnement
+# Secrets et configuration
 .env
+*.env
 .env.local
 .env.production
 
-# Python
+# Base de données
+*.db
+*.sqlite
+postgres-data/
+
+# Logs
+*.log
+logs/
+
+# Cache Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
+*.pyd
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
 
 # Virtual environments
-env/
 venv/
-.venv/
-ENV/
-env.bak/
-venv.bak/
+env/
+
+# Node modules (Firebase)
+node_modules/
+
+# Firebase
+firebase-app/.firebase/
+firebase-app/firebase-debug.log
+firebase-app/firebase-debug.*.log
 
 # Docker
-.docker/
-*.log
+.dockerignore
+docker-compose.override.yml
 
-#
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# ==========================================
+# AJOUTS SPÉCIFIQUES STRAVA ANALYTICS
+# ==========================================
+
+# Données sensibles Strava
+strava_tokens/
+tokens/
+*.token
+
+# Exports et sauvegardes
+exports/
+backups/
+*.csv
+*.json.backup
+
+# Fichiers de développement
+test_data/
+samples/
+debug/
+
+# ngrok
+ngrok
+ngrok.exe
+
+# Jupyter notebooks (si vous en créez)
+*.ipynb_checkpoints/
+
+# Certificats et clés
+*.pem
+*.key
+*.crt
+
+# Fichiers temporaires de synchronisation
+sync_*.tmp
+*.lock

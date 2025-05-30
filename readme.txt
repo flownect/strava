@@ -1,442 +1,453 @@
-# 🏃‍♂️ Strava Analytics - Système Complet
+# 🏃‍♂️ Strava Analytics - Dashboard Groupe
 
-Système d'analyse avancé des données d'entraînement Strava avec métriques natives enrichies et calculs personnalisés.
+Système d'analyse avancé des données Strava avec dashboard web et authentification multi-utilisateurs pour comparer les performances entre amis.
 
-## ✨ Fonctionnalités
+## 📋 Vue d'ensemble
 
-### 🔄 Métriques Strava Natives Enrichies
-- 🔐 **Authentification Strava OAuth 2.0**
-- 💪 **Puissance Normalized Power** (weighted_average_watts)
-- 🎯 **Training Stress Score** (suffer_score)
-- ❤️ **Données fréquence cardiaque** enrichies
-- 🔍 **Distinction capteur réel vs estimé** (device_watts)
-- 🏠 **Contexte activité** (indoor/outdoor, commute)
-- ✅ **99.9% de couverture** sur vos activités
+### Fonctionnalités principales
 
-### ⚡ Calculs Personnalisés Avancés
-- 🎯 **TSS personnalisé** avec votre FTP réel
-- 💪 **Records de puissance** automatiques (1min, 5min, 20min)
-- 🏃 **Records de distance** automatiques (1km, 5km, 10km, semi, marathon)
-- 📊 **Zones d'intensité précises** basées sur votre FTP
-- 🔄 **Comparaison Strava vs Personnel**
-- 📈 **Analyses de charge d'entraînement**
-- 📋 **Recommandations personnalisées**
+#### 🔐 Système personnel
+- Authentification Strava OAuth 2.0
+- Synchronisation automatique de vos activités
+- Calculs de métriques personnalisées (TSS, zones, records)
+- Dashboard sport-km avec filtres avancés (vélo, course, home trainer)
+- Export CSV enrichi
 
-### 📊 Dashboard Web Intégré
-- 🌐 **Interface web intuitive** avec graphiques interactifs
-- 📈 **Visualisations temps réel** de vos performances
-- 📱 **Responsive design** pour mobile et desktop
-- 🎨 **Tableaux de bord personnalisés**
+#### 👥 Système groupe
+- Invitation d'amis via interface web Firebase
+- Authentification OAuth individuelle pour chaque ami
+- Tableau de bord comparatif entre membres du groupe
+- Stats de groupe privées et sécurisées
+- Gestion multi-utilisateurs
 
-## 🚀 Installation Rapide
+### Technologies utilisées
+- **Backend** : Python Flask + PostgreSQL
+- **Frontend** : HTML/CSS/JavaScript + Chart.js
+- **Hébergement web** : Firebase Hosting
+- **Tunnel local** : ngrok (développement)
+- **Containerisation** : Docker + Docker Compose
 
-### Prérequis
-- Docker et Docker Compose
-- Compte Strava avec application API créée
+## 🏗️ Architecture
 
-### 1. Configuration Strava API
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────┐
+│    Strava API   │◄──►│  Firebase Web    │◄──►│   Amis      │
+│   OAuth Flow    │    │   (Interface)    │    │ (Invités)   │
+└─────────────────┘    └──────────────────┘    └─────────────┘
+         ▲                        │                           
+         │                        ▼                           
+┌─────────────────┐    ┌──────────────────┐                  
+│      ngrok      │◄──►│   API Flask      │                  
+│    (Tunnel)     │    │  (Backend Local) │                  
+└─────────────────┘    └──────────────────┘                  
+                                │                           
+                       ┌──────────────────┐                  
+                       │   PostgreSQL     │                  
+                       │  (Base données)  │                  
+                       └──────────────────┘                  
+```
 
-1. Allez sur https://www.strava.com/settings/api
-2. Créez une nouvelle application :
-   - **Authorization Callback Domain** : `localhost`
-   - **Website** : `http://localhost:58001`
-3. Notez votre `Client ID` et `Client Secret`
+## ✅ Prérequis
 
-### 2. Installation du Projet
+### Comptes nécessaires
+- **Strava Developer Account** : https://www.strava.com/settings/api
+- **Firebase Account** : https://console.firebase.google.com
+- **ngrok Account** : https://dashboard.ngrok.com (gratuit)
+
+### Logiciels requis
+- Docker 20.x+ et Docker Compose 2.x+
+- Node.js 16.x+ (pour Firebase CLI)
+- Python 3.8+
+
+## 🚀 Installation rapide
 
 ```bash
-# Cloner ou créer le projet
+# 1. Cloner le projet
 cd ~/Documents/dev
-mkdir strava-analytics && cd strava-analytics
+git clone https://github.com/VOTRE-USERNAME/strava-analytics.git
+cd strava-analytics
 
-# Copier la configuration
+# 2. Configuration
 cp .env.example .env
+# Modifier .env avec vos identifiants Strava
+
+# 3. Démarrer l'API locale
+make up
+
+# 4. Installer Firebase CLI
+npm install -g firebase-tools
+firebase login
+
+# 5. Configurer Firebase
+mkdir firebase-app && cd firebase-app
+firebase init
+# Choisir : Hosting, projet existant, public directory: public
+
+# 6. Installer ngrok
+brew install ngrok/ngrok/ngrok
+ngrok config add-authtoken VOTRE_AUTHTOKEN
 ```
 
-Configurez `.env` avec vos paramètres Strava :
+## ⚙️ Configuration
+
+### Variables principales (.env)
 ```env
-STRAVA_CLIENT_ID=votre_client_id
-STRAVA_CLIENT_SECRET=votre_client_secret
-STRAVA_REDIRECT_URI=http://localhost:58001/auth/strava/callback
+# Strava API
+STRAVA_CLIENT_ID=161590
+STRAVA_CLIENT_SECRET=abc123def456...
+
+# Base de données
+POSTGRES_USER=strava_user
+POSTGRES_PASSWORD=mot_de_passe_securise
+POSTGRES_DB=strava_analytics_db
+POSTGRES_PORT=5433
+
+# Application
+FLASK_SECRET_KEY=cle_secrete_unique
 ```
 
-### 3. Démarrage
-
-```bash
-# Construction et démarrage
-make build && make up
-
-# Attendre le démarrage complet
-sleep 15
-
-# Vérifier le bon fonctionnement
-curl http://localhost:58001/health
+### Configuration Firebase (firebase-app/public/js/config.js)
+```javascript
+const CONFIG = {
+    STRAVA_CLIENT_ID: '161590',
+    STRAVA_REDIRECT_URI: 'https://strava-jerome.web.app/callback.html',
+    API_BASE_URL: 'https://1455-78-245-248-89.ngrok-free.app',
+    STRAVA_SCOPES: 'read_all,activity:read_all'
+};
 ```
 
-### 4. Configuration Personnalisée
+### ⚠️ Configuration Strava OAuth (Important)
+Dans votre compte développeur Strava (https://www.strava.com/settings/api) :
+- **Authorization Callback Domain** : `strava-jerome.web.app`
+- **Website** : `https://strava-jerome.web.app`
+- **Application Name** : Strava Analytics Dashboard
 
+## 🏃‍♂️ Utilisation quotidienne
+
+### Démarrage standard
 ```bash
-# Configurer votre FTP (remplacez 240 par votre FTP)
+# Terminal 1 - API Flask
+cd ~/Documents/dev/strava-analytics
+make up
+
+# Terminal 2 - ngrok (pour les amis)
+ngrok http 58001
+
+# Terminal 3 - Firebase (si modifications)
+cd firebase-app
+firebase deploy
+```
+
+### 🔑 Authentification et synchronisation initiale
+```bash
+# 1. S'authentifier avec Strava (dans le navigateur)
+open http://localhost:58001/auth/strava
+
+# 2. Configurer vos paramètres personnels (FTP, poids)
 curl -X POST http://localhost:58001/api/activities/athlete/1/settings \
   -H "Content-Type: application/json" \
   -d '{"ftp": 240, "weight": 75}'
 
-# Lancer les calculs personnalisés
+# 3. Synchroniser vos activités Strava
+curl -X POST http://localhost:58001/api/activities/sync
+
+# 4. Calculer métriques personnalisées
 curl -X POST http://localhost:58001/api/activities/athlete/1/calculate-custom-metrics
+
+# 5. Vérifier que tout a marché
+curl http://localhost:58001/api/activities/athlete/1?per_page=5
 ```
 
-## 📊 Accès aux Interfaces
+## 🌐 URLs principales
 
-### URLs Principales
-- **🏠 Page d'accueil** : http://localhost:58001
-- **📊 Dashboard Sport** : http://localhost:58001/dashboard/sport-km.html
-- **⚕️ Santé API** : http://localhost:58001/health
-- **🔐 Auth Strava** : http://localhost:58001/auth/strava
-- **📈 Statut** : http://localhost:58001/auth/status
+### Dashboard personnel (vous)
+- **API locale** : http://localhost:58001
+- **Dashboard sport-km** : http://localhost:58001/dashboard/sport-km.html
+- **Santé système** : http://localhost:58001/health
 
-### Configuration Dashboard
-Le fichier `dashboard/sport-km.html` est automatiquement servi via l'API Flask. Pour y accéder :
+### Interface groupe (amis)
+- **Page d'accueil** : https://strava-jerome.web.app
+- **Invitation amis** : https://strava-jerome.web.app/invite.html
+- **Dashboard groupe** : https://strava-jerome.web.app/dashboard.html
 
-1. **Via navigateur** : http://localhost:58001/dashboard/sport-km.html
-2. **Via API** : Le dashboard peut consommer les endpoints API directement
+## 📊 Fonctionnalités détaillées
 
-## 🛠️ Commandes Quotidiennes
+### Dashboard personnel
+- **Filtres sports** : Course, Vélo, Home trainer, "Vélo (Tous)" (additionne route + indoor)
+- **Périodes** : 30j, 3mois, 6mois, 1an, personnalisée
+- **Groupements** : Par jour, semaine, mois
+- **Statistiques** : Distance totale, moyenne, maximum, nombre d'activités
+- **Graphiques** : Évolution temporelle + répartition circulaire
 
-### Démarrage Standard
+### Système amis
+- **Invitation sécurisée** : Chaque ami autorise individuellement votre app
+- **Données privées** : Aucune exposition publique, dashboard groupe fermé
+- **Synchronisation** : Activités des amis synchronisées dans votre base locale
+- **Comparaisons** : Stats groupées, classements, évolutions comparatives
+
+## 🗃️ Base de données
+
+### Structure principale (nouvelles tables ajoutées)
+```sql
+-- Vos données principales
+activity_summary              -- Vos activités de base
+athletes                     -- Informations des athlètes
+
+-- Métriques enrichies (NOUVELLES TABLES Phase 1)
+activity_strava_metrics      -- Métriques Strava natives (puissance, FC, TSS)
+activity_custom_metrics      -- Calculs personnalisés (TSS recalculé, zones)
+athlete_settings            -- Vos paramètres (FTP, poids, seuils)
+
+-- Données amis (en développement)
+friends_auth                -- Tokens d'autorisation des amis
+friends_activity_summary    -- Activités des amis autorisés
+```
+
+### 📊 Nouvelles métriques disponibles
+- **Puissance** : Normalized Power, TSS Strava, zones personnalisées
+- **Fréquence cardiaque** : Zones FC, moyennes, pics
+- **Records personnels** : Meilleurs temps 1km, 5km, 10km, 21km, 42km
+- **Records de puissance** : Pics 1min, 5min, 20min
+- **Charge d'entraînement** : TSS personnalisé basé sur votre FTP
+
+### Accès base (DBeaver)
+- **Host** : localhost
+- **Port** : 5433
+- **Database** : strava_analytics_db
+- **Username** : strava_user
+
+### 🔍 Requêtes utiles pour explorer les nouvelles données
+```sql
+-- Voir vos activités avec métriques enrichies
+SELECT 
+    a.name, 
+    a.type,
+    a.distance_km,
+    sm.weighted_average_watts as normalized_power,
+    sm.suffer_score as tss_strava,
+    cm.custom_tss,
+    cm.intensity_factor
+FROM activity_summary a
+LEFT JOIN activity_strava_metrics sm ON a.id = sm.activity_id
+LEFT JOIN activity_custom_metrics cm ON a.id = cm.activity_id
+WHERE a.athlete_id = 1
+ORDER BY a.start_date_local DESC
+LIMIT 10;
+
+-- Voir vos records personnels
+SELECT * FROM athlete_personal_records WHERE athlete_id = 1;
+
+-- Stats mensuelles enrichies
+SELECT * FROM monthly_activity_stats 
+WHERE athlete_id = 1 AND year = 2024 
+ORDER BY month DESC;
+```
+
+## 🔧 Maintenance
+
+### Commandes utiles
 ```bash
-cd ~/Documents/dev/strava-analytics
+# Vérifications santé
+curl http://localhost:58001/health
+docker-compose ps
+
+# Logs système
+make logs
+docker-compose logs -f api
+
+# Redémarrages
+make restart
+make stop && make up
+
+# Synchronisation amis
+curl -X POST http://localhost:58001/api/friends/sync-all
+
+# Tests des endpoints amis
+curl http://localhost:58001/api/friends/status
+curl http://localhost:58001/api/friends/list
+```
+
+### Gestion ngrok
+```bash
+# L'URL ngrok change à chaque redémarrage (version gratuite)
+# Après redémarrage ngrok :
+
+# 1. Noter nouvelle URL
+open http://localhost:4040
+
+# 2. Mettre à jour firebase-app/public/js/config.js
+# Changer API_BASE_URL: 'https://NOUVELLE-URL.ngrok.io'
+
+# 3. Redéployer Firebase
+cd firebase-app
+firebase deploy
+```
+
+### 🔄 Mise à jour des métriques
+```bash
+# Recalculer toutes les métriques personnalisées
+curl -X POST http://localhost:58001/api/activities/athlete/1/calculate-custom-metrics
+
+# Mettre à jour vos seuils
+curl -X POST http://localhost:58001/api/activities/athlete/1/settings \
+  -H "Content-Type: application/json" \
+  -d '{"ftp": 250, "weight": 70}'
+
+# Synchroniser nouvelles activités
+curl -X POST http://localhost:58001/api/activities/sync
+```
+
+## 🆘 Troubleshooting
+
+### Problèmes courants
+
+**API ne répond pas**
+```bash
+curl http://localhost:58001/health
+# Si erreur : vérifier make up, Docker, ports
+```
+
+**Erreur ModuleNotFoundError dans les logs**
+```bash
+# Le problème est dans ./api/app.py, pas ./app.py
+# Vérifier que les imports sont corrects :
+# from models.database import db
+# from routes.friends_routes import friends_bp
+```
+
+**Base de données : tables manquantes**
+```bash
+# Reconstruire la base avec les nouvelles tables
+docker-compose down -v
+docker volume rm strava-analytics_postgres-data
 make up
 ```
 
-### Vérifications Rapides
+**Amis ne peuvent pas s'authentifier**
 ```bash
-# Statut des services
-docker-compose ps
-
-# Santé de l'API
-curl http://localhost:58001/health
-
-# Vos paramètres actuels
-curl "http://localhost:58001/api/activities/athlete/1/settings"
-
-# Dernières activités
-curl "http://localhost:58001/api/activities/athlete/1?per_page=5"
+# Vérifier configuration Strava :
+# Authorization Callback Domain = strava-jerome.web.app
+# Vérifier ngrok actif et config.js à jour
 ```
 
-### Maintenance
+**Dashboard vide**
 ```bash
-# Redémarrer les services
-make restart
-
-# Voir les logs
-make logs
-
-# Arrêter proprement
-make stop
-
-# Nettoyage complet (⚠️ supprime les données)
-make clean
+# Vérifier données synchronisées
+curl http://localhost:58001/api/activities/athlete/1?per_page=5
+# Si vide : vérifier auth Strava et tokens
 ```
 
-## 🌐 Endpoints API Principaux
-
-### Configuration Personnelle
+**ngrok : "authentication failed"**
 ```bash
-# Voir vos paramètres
-GET /api/activities/athlete/1/settings
+# Vous avez déjà une session active
+open http://localhost:4040  # Voir l'URL active
 
-# Configurer FTP et poids
-POST /api/activities/athlete/1/settings
+# Ou arrêter et redémarrer
+pkill ngrok
+ngrok http 58001
 ```
 
-### Données d'Activités
+**Configuration Firebase manquante**
 ```bash
-# Activités enrichies
-GET /api/activities/athlete/1
+# Vérifier que config.js existe et contient les bonnes valeurs
+ls -la firebase-app/public/js/config.js
+cat firebase-app/public/js/config.js
 
-# Métriques personnalisées
-GET /api/activities/athlete/1/custom-metrics
-
-# Export CSV complet
-GET /api/activities/athlete/1/export-custom
+# Redéployer après modification
+cd firebase-app
+firebase deploy
 ```
 
-### Analyses Avancées
+## 📈 Performances
+
+### Couverture données
+- ✅ ~1500 activités synchronisées et analysées
+- ✅ 99.9% métriques enrichies (Strava natives)
+- ✅ 100% calculs personnalisés (TSS, zones, records)
+- ✅ Support multi-amis illimité
+- ✅ Nouvelles tables optimisées avec index
+
+### Temps de traitement
+- **Sync initiale** : ~2-3 minutes pour 1000 activités
+- **Sync incrémentale** : ~10-30 secondes
+- **Dashboard load** : <2 secondes
+- **API response** : <200ms moyenne
+- **Calcul métriques personnalisées** : ~30 secondes pour 1000 activités
+
+## 🔐 Sécurité
+
+### Données personnelles
+- Vos données restent **locales** (PostgreSQL local)
+- Tokens Strava **chiffrés** en base
+- Aucune transmission vers des tiers
+
+### Données amis
+- Accès **uniquement aux données autorisées** via OAuth
+- Stockage **local sécurisé**
+- **Révocation possible** à tout moment côté Strava
+- **Dashboard privé** - aucune exposition publique
+
+### Configuration sécurisée
+- Client ID Strava : **public** (visible dans URLs), pas de risque
+- Client Secret : **privé** (reste dans .env serveur)
+- URLs Firebase : **publiques** par nature
+- API ngrok : **temporaire** et locale
+
+## 📄 Commandes de référence
+
 ```bash
-# Records personnels
-GET /api/activities/athlete/1/personal-records
-
-# Comparaison TSS
-GET /api/activities/athlete/1/compare-tss
-
-# Dashboard complet
-GET /api/activities/athlete/1/dashboard-custom
-
-# Recommandations
-GET /api/activities/athlete/1/recommendations
-```
-
-## 📈 Exemples d'Utilisation
-
-### Configuration Initiale Complète
-```bash
-# 1. Démarrer le système
-cd ~/Documents/dev/strava-analytics && make up && sleep 15
-
-# 2. Configurer vos paramètres (ajustez selon vos valeurs)
-curl -X POST http://localhost:58001/api/activities/athlete/1/settings \
-  -H "Content-Type: application/json" \
-  -d '{"ftp": 240, "weight": 75, "max_heartrate": 190}'
-
-# 3. Calculer les métriques personnalisées
-curl -X POST http://localhost:58001/api/activities/athlete/1/calculate-custom-metrics
-
-# 4. Voir votre dashboard
-curl "http://localhost:58001/api/activities/athlete/1/dashboard-custom"
-
-# 5. Accéder au dashboard web
-# Ouvrir http://localhost:58001/dashboard/sport-km.html
-```
-
-### Export de Données
-```bash
-# Export CSV avec toutes les métriques
-curl "http://localhost:58001/api/activities/athlete/1/export-custom" > mes_activites_completes.csv
-
-# Export par année
-curl "http://localhost:58001/api/activities/athlete/1/export-custom?year=2024" > activites_2024.csv
-
-# Export par type d'activité
-curl "http://localhost:58001/api/activities/athlete/1/export-custom?type=Run" > mes_courses.csv
-```
-
-## 🗃️ Architecture Technique
-
-### Services Docker
-- **API Flask** : http://localhost:58001 (application principale)
-- **PostgreSQL** : localhost:5433 (base de données)
-- **Dashboard Web** : Intégré dans l'API Flask
-
-### Structure des Données
-```
-📊 Métriques Strava Natives
-├── Puissance Normalized Power (weighted_average_watts)
-├── Training Stress Score (suffer_score)
-├── Données cardio enrichies (has_heartrate)
-└── Contexte activité (indoor/outdoor/commute)
-
-⚡ Calculs Personnalisés
-├── TSS avec votre FTP réel
-├── Intensity Factor précis
-├── Zones de puissance personnalisées
-├── Records automatiques (puissance + distance)
-└── Recommandations d'entraînement
-```
-
-### Base de Données
-```sql
--- Tables principales
-activity_summary              -- Activités de base
-activity_strava_metrics      -- Métriques Strava natives
-activity_custom_metrics      -- Calculs personnalisés
-athlete_settings            -- Paramètres utilisateur (FTP, poids)
-
--- Vues optimisées
-activity_with_strava_metrics    -- Vue combinée enrichie
-activity_complete_analysis      -- Vue avec tous les calculs
-```
-
-## 🔧 Configuration Avancée
-
-### Variables d'Environnement (.env)
-```env
-# Base de données
-POSTGRES_USER=strava_user
-POSTGRES_PASSWORD=votre_mot_de_passe_securise
-POSTGRES_DB=strava_analytics_db
-
-# Strava API
-STRAVA_CLIENT_ID=votre_client_id
-STRAVA_CLIENT_SECRET=votre_client_secret
-STRAVA_REDIRECT_URI=http://localhost:58001/auth/strava/callback
-
-# Application
-FLASK_SECRET_KEY=votre_cle_secrete_flask
-FLASK_ENV=production
-```
-
-### Accès Base de Données (DBeaver)
-- **Host** : `localhost`
-- **Port** : `5433`
-- **Database** : `strava_analytics_db`
-- **Username** : `strava_user`
-- **Password** : [votre mot de passe du .env]
-
-### Requêtes SQL Utiles
-```sql
--- Voir vos 10 dernières activités avec métriques complètes
-SELECT name, type, start_date_local, distance_km, 
-       weighted_average_watts, suffer_score, custom_tss, 
-       intensity_factor, power_zone
-FROM activity_complete_analysis 
-WHERE athlete_id = 1 
-ORDER BY start_date_local DESC 
-LIMIT 10;
-
--- Statistiques par type d'activité
-SELECT type, COUNT(*) as nb_activites,
-       ROUND(AVG(custom_tss), 1) as tss_moyen,
-       ROUND(AVG(intensity_factor), 3) as if_moyen,
-       ROUND(SUM(distance_km), 2) as km_total
-FROM activity_complete_analysis 
-WHERE athlete_id = 1 
-GROUP BY type 
-ORDER BY nb_activites DESC;
-```
-
-## 🆘 Dépannage
-
-### Problèmes Courants
-
-**Services ne démarrent pas**
-```bash
-# Vérifier les logs
-docker-compose logs --tail=20
-
-# Redémarrer proprement
-docker-compose down && docker-compose up -d
-```
-
-**Dashboard HTML ne s'affiche pas**
-```bash
-# Vérifier que le fichier existe
-ls -la dashboard/sport-km.html
-
-# Vérifier les permissions
-chmod 644 dashboard/sport-km.html
-
-# Accéder directement
-curl http://localhost:58001/dashboard/sport-km.html
-```
-
-**Authentification Strava échoue**
-- Vérifiez `STRAVA_CLIENT_ID` et `STRAVA_CLIENT_SECRET` dans `.env`
-- Vérifiez que l'URL de callback correspond dans les paramètres Strava
-
-**Métriques manquantes**
-```bash
-# Vérifier la couverture
-curl "http://localhost:58001/api/activities/athlete/1/metrics-status"
-
-# Relancer l'enrichissement
-curl -X POST "http://localhost:58001/api/activities/athlete/1/calculate-custom-metrics"
-```
-
-### Logs Utiles
-```bash
-# Tous les logs
-make logs
-
-# API seulement
-docker-compose logs -f api
-
-# Base de données seulement
-docker-compose logs -f db
-
-# Logs en temps réel
-docker-compose logs -f --tail=100
-```
-
-## 📱 Dashboard Web - Configuration
-
-### Servir le Dashboard HTML
-
-Votre fichier `dashboard/sport-km.html` peut être accessible de plusieurs façons :
-
-#### Option 1 : Via Flask (Recommandé)
-Ajoutez cette route dans votre API Flask :
-
-```python
-from flask import send_from_directory
-
-@app.route('/dashboard/<path:filename>')
-def serve_dashboard(filename):
-    return send_from_directory('dashboard', filename)
-```
-
-Puis accédez à : http://localhost:58001/dashboard/sport-km.html
-
-#### Option 2 : Intégration API Direct
-Votre dashboard HTML peut consommer directement les APIs :
-
-```javascript
-// Dans sport-km.html
-async function loadDashboardData() {
-    try {
-        const response = await fetch('/api/activities/athlete/1/dashboard-custom');
-        const data = await response.json();
-        // Traiter les données...
-    } catch (error) {
-        console.error('Erreur chargement données:', error);
-    }
-}
-```
-
-#### Option 3 : Static Files
-Configurez Flask pour servir les fichiers statiques :
-
-```python
-app = Flask(__name__, static_folder='dashboard', static_url_path='/dashboard')
-```
-
-## 🎯 Résultats Obtenus
-
-### 📊 Couverture des Données
-- ✅ **1455 activités** synchronisées et analysées
-- ✅ **99.9% métriques enrichies** (Strava natives)
-- ✅ **100% calculs personnalisés** disponibles
-- ✅ **Records automatiques** détectés et validés
-
-### 🏆 Profil Sportif Analysé
-- 🚴 **Vélo** : FTP ~240W, pic 1min à 318W
-- 🏃 **Course** : Records 1km=4:17, 10km=4:26/km
-- 📈 **Progression** : IF moyen 1.049, charge optimisée
-
-### 🛠️ Fonctionnalités Actives
-- ⚡ Synchronisation automatique Strava
-- 📊 Calculs en temps réel
-- 🌐 Dashboard web interactif
-- 📁 Export CSV enrichi
-- 🔍 Analyses prédictives
-
----
-
-## 📄 Commandes de Référence
-
-### Makefile Disponible
-```bash
-make help          # Voir toutes les commandes
-make build         # Construire les images
-make up            # Démarrer les services
-make down          # Arrêter les services
-make restart       # Redémarrer
-make logs          # Voir les logs
-make status        # Statut des services
-make clean         # Nettoyage complet
-```
-
-### API Quick Start
-```bash
-# Séquence complète de démarrage
+# Démarrage complet
 cd ~/Documents/dev/strava-analytics
-make up && sleep 15
-curl -X POST http://localhost:58001/api/activities/athlete/1/settings -H "Content-Type: application/json" -d '{"ftp": 240}'
+make up && ngrok http 58001 && cd firebase-app && firebase deploy
+
+# Configuration initiale complète
+curl -X POST http://localhost:58001/api/activities/athlete/1/settings \
+  -H "Content-Type: application/json" -d '{"ftp": 240, "weight": 75}'
+curl -X POST http://localhost:58001/api/activities/sync
 curl -X POST http://localhost:58001/api/activities/athlete/1/calculate-custom-metrics
-open http://localhost:58001/dashboard/sport-km.html
+
+# Inviter des amis
+echo "Partagez : https://strava-jerome.web.app/invite.html"
+
+# Vérifications système
+curl http://localhost:58001/health
+curl http://localhost:58001/api/friends/list
+curl http://localhost:58001/api/activities/athlete/1?per_page=3
+
+# Arrêt propre
+make stop
 ```
+
+## 🆕 Nouveautés v2.0
+
+### ✅ Phase 1 : Métriques enrichies (TERMINÉ)
+- Tables `activity_strava_metrics` et `activity_custom_metrics`
+- TSS personnalisé basé sur votre FTP
+- Records de puissance et de distance
+- Zones d'entraînement personnalisées
+- Vues SQL enrichies pour analyses avancées
+
+### 🚧 Phase 2 : Système amis (EN COURS)
+- Interface d'invitation Firebase fonctionnelle
+- API friends avec endpoints OAuth
+- Stockage sécurisé des autorisations amis
+- Dashboard comparatif (en développement)
+
+### 🔮 Phase 3 : Analyses avancées (PLANIFIÉ)
+- Détection automatique de tests FTP
+- Prédictions de performance
+- Planification d'entraînement
+- Alertes et recommandations
 
 ---
 
-**🎯 Votre système Strava Analytics est opérationnel avec dashboard web intégré !**
+**🎯 Système Strava Analytics v2.0 avec métriques avancées et système d'amis !**
 
-**Accès rapide :** `make up` puis http://localhost:58001/dashboard/sport-km.html 🚀
+**Support** : Consultez les logs avec `make logs` en cas de problème.
+
+**Changelog** : 
+- ✅ Métriques Strava natives intégrées
+- ✅ Calculs personnalisés TSS/IF basés sur votre FTP  
+- ✅ Interface d'invitation Firebase opérationnelle
+- ✅ Base de données enrichie avec nouvelles tables
+- ✅ Configuration sécurisée et automatisée

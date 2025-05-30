@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏃‍♂️ Rejoindre le Dashboard Groupe Strava</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🏃‍♂️ Dashboard Groupe Strava</h1>
+        
+        <p class="subtitle">
+            Rejoins notre dashboard privé pour voir nos stats comparées, 
+            défis hebdomadaires et suivre l'évolution du groupe !
+        </p>
+        
+        <div class="info-section">
+            <h2 class="info-title">🎯 Ce qui t'attend :</h2>
+            <div class="feature-list">
+                <div class="feature">
+                    <span class="feature-icon">📊</span>
+                    <span>Stats comparées en temps réel</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🏆</span>
+                    <span>Classements hebdomadaires du groupe</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🎯</span>
+                    <span>Défis et challenges entre amis</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">📈</span>
+                    <span>Évolution de tes performances</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🚴</span>
+                    <span>Données vélo et course séparées</span>
+                </div>
+                <div class="feature">
+                    <span class="feature-icon">🔒</span>
+                    <span>100% privé, visible du groupe seulement</span>
+                </div>
+            </div>
+        </div>
+        
+        <button class="nav-btn btn-primary" onclick="connectStrava()" id="connectBtn">
+            🔗 Connecter mon Strava
+        </button>
+        
+        <div class="loading" id="loading">⏳</div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="footer">
+            <p>🔐 Tes données Strava restent sécurisées et ne sont partagées qu'avec notre groupe privé.</p>
+            <p>Tu peux révoquer l'accès à tout moment dans tes paramètres Strava.</p>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+        function connectStrava() {
+            // Vérifier que la configuration est chargée
+            if (typeof CONFIG === 'undefined') {
+                showError('Configuration non chargée ! Problème avec config.js');
+                return;
+            }
+
+            // Vérifier que la configuration est valide
+            const configErrors = validateConfig();
+            if (configErrors.length > 0) {
+                showError('Configuration incomplète : ' + configErrors.join(', '));
+                return;
+            }
+
+            const authUrl = getStravaAuthUrl();
+            showLoading('Redirection vers Strava...');
+            
+            console.log('URL d\'autorisation:', authUrl);
+            
+            setTimeout(() => {
+                window.location.href = authUrl;
+            }, 1000);
+        }
+
+        function showLoading(message) {
+            document.getElementById('connectBtn').style.display = 'none';
+            document.getElementById('loading').style.display = 'block';
+            showStatus(message, 'info');
+        }
+
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status status-${type}`;
+            statusEl.style.display = 'block';
+        }
+
+        function showError(message) {
+            showStatus(message, 'error');
+            document.getElementById('connectBtn').style.display = 'inline-block';
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        // Log de debug au chargement
+        window.addEventListener('load', function() {
+            console.log('Page d\'invitation chargée');
+            if (typeof CONFIG !== 'undefined') {
+                console.log('Configuration:', CONFIG);
+                
+                // Vérifier la config et afficher les erreurs éventuelles
+                const errors = validateConfig();
+                if (errors.length > 0) {
+                    console.warn('Erreurs de configuration:', errors);
+                    showError('Configuration incomplète : ' + errors.join(', '));
+                } else {
+                    console.log('✅ Configuration OK - Prêt pour l\'invitation !');
+                }
+            } else {
+                console.error('❌ CONFIG non défini - Problème avec config.js');
+                showError('Configuration non chargée ! Vérifiez que js/config.js existe.');
+            }
+        });
+    </script>
+</body>
+</html>

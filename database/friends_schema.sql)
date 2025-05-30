@@ -1,0 +1,56 @@
+-- Migration pour ajouter le support des amis
+-- Fichier: database/friends_schema.sql
+
+-- Table des amis autorisés
+CREATE TABLE IF NOT EXISTS friends_auth (
+    id SERIAL PRIMARY KEY,
+    athlete_id BIGINT UNIQUE NOT NULL,
+    athlete_name VARCHAR(255) NOT NULL,
+    access_token TEXT NOT NULL,
+    refresh_token TEXT NOT NULL,
+    expires_at BIGINT NOT NULL,
+    scopes TEXT NOT NULL DEFAULT 'read_all,activity:read_all',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table des activités des amis
+CREATE TABLE IF NOT EXISTS friends_activity_summary (
+    id SERIAL PRIMARY KEY,
+    friend_athlete_id BIGINT NOT NULL,
+    activity_id BIGINT NOT NULL,
+    name VARCHAR(255),
+    type VARCHAR(50),
+    sport_type VARCHAR(50),
+    start_date TIMESTAMP,
+    start_date_local TIMESTAMP,
+    distance_km FLOAT,
+    moving_time INTEGER,
+    elapsed_time INTEGER,
+    total_elevation_gain FLOAT,
+    average_speed FLOAT,
+    max_speed FLOAT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    FOREIGN KEY (friend_athlete_id) REFERENCES friends_auth(athlete_id) ON DELETE CASCADE,
+    UNIQUE(friend_athlete_id, activity_id)
+);
+
+-- Index pour les performances
+CREATE INDEX IF NOT EXISTS idx_friends_auth_athlete_id ON friends_auth(athlete_id);
+CREATE INDEX IF NOT EXISTS idx_friends_auth_expires ON friends_auth(expires_at);
+CREATE INDEX IF NOT EXISTS idx_friends_activities_athlete ON friends_activity_summary(friend_athlete_id);
+CREATE INDEX IF NOT EXISTS idx_friends_activities_date ON friends_activity_summary(start_date);
+
+-- Vue pour faciliter les requêtes
+CREATE OR REPLACE VIEW friends_with_activities AS
+SELECT 
+    fa.athlete_id,
+    fa.athlete_name,
+    fa.created_at as friend_since,
+    COUNT(fas.id) as total_activities,
+    MAX(fas.start_date) as last_activity_date,
+    SUM(fas.distance_km) as total_distance_km
+FROM friends_auth fa
+LEFT JOIN friends_activity_summary fas ON fa.athlete_id = fas.friend_athlete_id
+GROUP BY fa.athlete_id, fa.athlete_name, fa.created_at;

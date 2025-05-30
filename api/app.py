@@ -1,16 +1,21 @@
 from flask import Flask, request, jsonify, redirect, session, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
 from config import Config
 from models.database import db
 from routes.auth import auth_bp
 from routes.activities import activities_bp
 from routes.analytics import analytics_bp
+from routes.friends_routes import friends_bp
 import os
 import traceback
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    
+    # ========== CONFIGURATION CORS POUR FIREBASE ========== 
+    CORS(app, origins=['https://strava-jerome.web.app'])
     
     # Initialisation de la base de données
     db.init_app(app)
@@ -19,6 +24,7 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(activities_bp, url_prefix='/api/activities')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
+    app.register_blueprint(friends_bp)
     
     @app.route('/')
     def index():
@@ -30,7 +36,9 @@ def create_app():
                 'auth': '/auth/strava',
                 'activities': '/api/activities',
                 'analytics': '/api/analytics',
-                'dashboard': '/dashboard/sport-km.html'
+                'dashboard': '/dashboard/sport-km.html',
+                'friends': '/api/friends',
+                'friends_auth': '/auth/friends/exchange'
             }
         })
     
@@ -111,7 +119,7 @@ def create_app():
         except Exception as e:
             return jsonify({'error': str(e)})
     
-    # ========== GESTIONNAIRE D'ERREURS GLOBAL (NOUVEAU) ==========
+    # ========== GESTIONNAIRE D'ERREURS GLOBAL ==========
     
     @app.errorhandler(Exception)
     def handle_exception(e):
@@ -132,12 +140,24 @@ def create_app():
             'traceback': traceback.format_exc()
         }), 500
     
-    # Configuration CORS pour le dashboard
+    # ========== CONFIGURATION CORS ÉTENDUE ==========
     @app.after_request
     def after_request(response):
-        response.headers.add('Access-Control-Allow-Origin', '*')
+        # Autoriser votre Firebase + localhost pour le dashboard
+        allowed_origins = [
+            'https://strava-jerome.web.app',
+            'http://localhost:3000',
+            'http://localhost:58001',
+            '*'  # Pour le développement
+        ]
+        
+        origin = request.headers.get('Origin')
+        if origin in allowed_origins or not origin:
+            response.headers.add('Access-Control-Allow-Origin', origin or '*')
+        
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
     
     return app
@@ -148,5 +168,4 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     
-    # CHANGÉ: Debug activé temporairement
     app.run(host='0.0.0.0', port=5000, debug=True)

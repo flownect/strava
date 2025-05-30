@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion Strava en cours...</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1 class="title">🔄 Connexion Strava</h1>
+        
+        <div class="loading" id="loading">⏳</div>
+        
+        <div class="status status-info" id="status">
+            Traitement de votre autorisation Strava...
+        </div>
+        
+        <div class="footer" id="details">
+            Échange du code d'autorisation avec notre serveur...
+        </div>
+        
+        <button class="nav-btn btn-secondary" onclick="retryAuth()" id="retryBtn" style="display: none;">
+            🔄 Réessayer
+        </button>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script>
+        // Fonction principale de gestion du callback
+        async function handleStravaCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
+            const state = urlParams.get('state');
+            
+            console.log('Callback params:', { 
+                code: code ? 'présent' : 'manquant', 
+                error, 
+                state,
+                fullUrl: window.location.href
+            });
+            
+            // Vérification des paramètres
+            updateStatus('Vérification des paramètres...', 'info');
+            await sleep(1000);
+            
+            if (error) {
+                showError(`Autorisation refusée: ${error}`, 'L\'utilisateur a refusé l\'autorisation ou une erreur s\'est produite.');
+                return;
+            }
+            
+            if (!code) {
+                showError('Code d\'autorisation manquant', 'Aucun code d\'autorisation reçu de Strava. Veuillez réessayer.');
+                return;
+            }
+            
+            // Échange du code
+            updateStatus('Échange du code d\'autorisation...', 'info');
+            await exchangeCodeForTokens(code);
+        }
+
+        // Échange du code contre les tokens
+        async function exchangeCodeForTokens(code) {
+            try {
+                updateDetails('Connexion au serveur...');
+                await sleep(500);
+                
+                // Vérifier la configuration
+                if (CONFIG.API_BASE_URL.includes('VOTRE-NGROK-URL')) {
+                    throw new Error('API_BASE_URL non configuré. Veuillez configurer ngrok.');
+                }
+                
+                updateDetails('Envoi du code d\'autorisation...');
+                const response = await apiCall('/auth/friends/exchange', {
+                    method: 'POST',
+                    body: JSON.stringify({ 
+                        code: code,
+                        redirect_uri: CONFIG.STRAVA_REDIRECT_URI
+                    })
+                });
+                
+                updateDetails('Synchronisation des données Strava...');
+                await sleep(1000);
+                
+                showSuccess(
+                    `Bienvenue ${response.athlete_name} ! 🎉`,
+                    'Tu fais maintenant partie du groupe. Redirection vers le dashboard...'
+                );
+                
+                // Rediriger vers le dashboard après 3 secondes
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 3000);
+                
+            } catch (error) {
+                console.error('Erreur lors de l\'échange:', error);
+                
+                if (error.message.includes('ngrok')) {
+                    showError(
+                        'Configuration manquante',
+                        'L\'API n\'est pas encore configurée. Contactez l\'administrateur.'
+                    );
+                } else {
+                    showError(
+                        'Erreur de connexion',
+                        `Impossible de finaliser l'authentification: ${error.message}`
+                    );
+                }
+            }
+        }
+
+        // Fonctions utilitaires
+        function updateStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.textContent = message;
+            statusEl.className = `status status-${type}`;
+        }
+
+        function updateDetails(message) {
+            document.getElementById('details').textContent = message;
+        }
+
+        function showSuccess(title, details) {
+            document.getElementById('loading').style.display = 'none';
+            updateStatus(title, 'success');
+            updateDetails(details);
+        }
+
+        function showError(title, details) {
+            document.getElementById('loading').style.display = 'none';
+            updateStatus(title, 'error');
+            updateDetails(details);
+            document.getElementById('retryBtn').style.display = 'inline-block';
+        }
+
+        function retryAuth() {
+            window.location.href = 'invite.html';
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // Initialisation
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Callback page loaded');
+            console.log('Current URL:', window.location.href);
+            
+            // Lancer le processus de callback
+            handleStravaCallback();
+        });
+    </script>
+</body>
+</html>
